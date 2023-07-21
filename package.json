@@ -8,12 +8,11 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@types/node": "^20.4.0",
     "exclusive-keyboard": "0.1.1",
-    "mqtt": "^4.3.7",
-    "typescript": "^5.1.6"
+    "mqtt": "^4.3.7"
   },
   "devDependencies": {
+    "typescript": "^5.1.6",
     "@types/node": "^20.4.0"
   }
 }

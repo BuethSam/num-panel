@@ -7,7 +7,7 @@ client.on('connect', () => {
 
 const ExclusiveKeyboard = require('exclusive-keyboard');
 
-const keyboard = new ExclusiveKeyboard('event0', false);
+const keyboard = new ExclusiveKeyboard('event0', true);
 const inputLed = fs.readdirSync('/sys/class/leds').filter((file: string) => {
     return file.startsWith('input');
 })[0].split('::')[0];
@@ -107,4 +107,5 @@ function blinkLED(led: "numlock" | "capslock" | "scrolllock", times: number, int
 
 process.on('SIGINT', function () {
     keyboard.close();
+    client.end();
 });
