@@ -1,11 +1,16 @@
 import * as fs from 'fs';
 import * as mqtt from "mqtt"
+const ExclusiveKeyboard = require('exclusive-keyboard');
+
 let client = mqtt.connect(process.env['MQTT_URL']!, { username: process.env['MQTT_USERNAME'], password: process.env['MQTT_PASSWORD'] })
+
 client.on('connect', () => {
     console.log("Connected to MQTT");
 })
 
-const ExclusiveKeyboard = require('exclusive-keyboard');
+var keyBuffer = "";
+var bufferTimmer: NodeJS.Timeout = setTimeout(() => { }, 0);
+
 
 const keyboard = new ExclusiveKeyboard('event0', true);
 const inputLed = fs.readdirSync('/sys/class/leds').filter((file: string) => {
@@ -14,11 +19,9 @@ const inputLed = fs.readdirSync('/sys/class/leds').filter((file: string) => {
 
 blinkLED("numlock", 3, 50)
 
-var keyBuffer = "";
-var bufferTimmer: NodeJS.Timeout = setTimeout(() => { }, 0);
+console.log("Running...");
 
 keyboard.on('keypress', (e: any) => {
-    // console.log(e.keyId);
     if (!e.keyId.startsWith('KEY_KP')) {
         console.log("Ingoring key: " + e.keyId);
         return;
@@ -57,37 +60,54 @@ keyboard.on('keypress', (e: any) => {
         keyBuffer = "";
     }
     else {
-        console.log("Key: " + num);
         keyBuffer += num;
-        bufferTimmer = setTimeout(() => {
-            keyBuffer = "";
-            cancel();
-        }, 5000);
+        bufferTimmer = setTimeout(() => cancel(), 5000);
     }
 });
 
-console.log("Running...");
+client.subscribe('alarmo/event', (err) => {
+    if (err) console.log(err);
+})
+
+client.on('message', (topic, message) => {
+    if (topic == 'alarmo/event') {
+        const payload = JSON.parse(message.toString());
+        switch (payload.event) {
+            case "ARM_AWAY":
+                blinkLED("numlock", 1, 100);
+                break;
+            case "ARM_HOME":
+                blinkLED("numlock", 2, 100);
+                break;
+            case "DISARM":
+                blinkLED("numlock", 3, 50);
+                break;
+            case "INVALID_CODE_PROVIDED":
+                blinkLED("numlock", 5, 50);
+                break;
+        }
+    }
+})
 
 function cancel() {
-    console.log("Canceling...");
-    blinkLED("numlock", 5, 100);
+    console.log("Cancel");
+    keyBuffer = "";
+    blinkLED("numlock", 5, 50)
 }
 
 function unArm(code: string) {
-    console.log("Unarming with code: " + code);
+    console.log("Unarming");
     client.publish('alarmo/command', JSON.stringify(
         {
             command: "disarm",
             code: code
         }
     ))
-    blinkLED("numlock", 1, 100);
 }
 
 function arm(mode: "home" | "away") {
     console.log("Arming " + mode);
     client.publish('alarmo/command', mode == "home" ? "ARM_HOME" : "ARM_AWAY")
-    blinkLED("numlock", 2, 100);
 }
 
 function blinkLED(led: "numlock" | "capslock" | "scrolllock", times: number, interval: number) {
