@@ -2,7 +2,12 @@ import * as fs from 'fs';
 import * as mqtt from "mqtt"
 const ExclusiveKeyboard = require('exclusive-keyboard');
 
+console.log("Connecting to MQTT...");
 let client = mqtt.connect(process.env['MQTT_URL']!, { username: process.env['MQTT_USERNAME'], password: process.env['MQTT_PASSWORD'] })
+client.on('error', (err) => {
+    console.log(err);
+    process.exit(1);
+})
 
 client.on('connect', () => {
     console.log("Connected to MQTT");
@@ -12,7 +17,7 @@ var keyBuffer = "";
 var bufferTimmer: NodeJS.Timeout = setTimeout(() => { }, 0);
 
 
-const keyboard = new ExclusiveKeyboard('event0', true);
+const keyboard = new ExclusiveKeyboard(process.env['EVENT_DEVICE'] ?? 'event0', true);
 const inputLed = fs.readdirSync('/sys/class/leds').filter((file: string) => {
     return file.startsWith('input');
 })[0].split('::')[0];
@@ -22,10 +27,6 @@ blinkLED("numlock", 3, 50)
 console.log("Running...");
 
 keyboard.on('keypress', (e: any) => {
-    if (!e.keyId.startsWith('KEY_KP')) {
-        console.log("Ingoring key: " + e.keyId);
-        return;
-    }
     blinkLED("numlock", 1, 50)
     var num = e.keyId.replace('KEY_KP', '');
     clearTimeout(bufferTimmer);
@@ -54,7 +55,8 @@ keyboard.on('keypress', (e: any) => {
             // case "KEY_NUMLOCK":
             //     break;
             default:
-                console.log("Key not assigned: " + e.keyId);
+                client.publish('num-panel/key', e.keyId);
+                console.log("Sending key: " + e.keyId);
                 break;
         }
         keyBuffer = "";
