@@ -28,6 +28,8 @@ console.log("Running...");
 
 keyboard.on('keypress', (e: any) => {
     blinkLED("numlock", 1, 50)
+    if (process.env['DEBUG'] == "true")
+        console.log(e);
     var num = e.keyId.replace('KEY_KP', '');
     clearTimeout(bufferTimmer);
     if (isNaN(num)) {
@@ -52,8 +54,8 @@ keyboard.on('keypress', (e: any) => {
             //     break;
             // case "KEY_KPSLASH":
             //     break;
-            // case "KEY_NUMLOCK":
-            //     break;
+            case "KEY_NUMLOCK":
+                return;
             default:
                 client.publish('num-panel/key', e.keyId);
                 console.log("Sending key: " + e.keyId);
